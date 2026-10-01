@@ -1,0 +1,33 @@
+# Port exposure variations.
+services:
+  postgres:
+    image: postgres:16.4
+    ports:
+      - "5432:5432"                 # all interfaces
+  mysql:
+    image: mysql:8.4
+    ports:
+      - "127.0.0.1:3306:3306"       # localhost only
+  mongo:
+    image: mongo:7.0
+    ports:
+      - "192.168.10.5:27017:27017"  # specific interface
+  redis:
+    image: redis:7.4
+    ports:
+      - "6379"                      # random host port, all interfaces
+  ipv6:
+    image: memcached:1.6
+    ports:
+      - "[::1]:11211:11211"         # IPv6 localhost
+  long-syntax:
+    image: example/search:1.0.0
+    ports:
+      - target: 9200
+        published: "9200"
+        host_ip: 0.0.0.0
+        protocol: tcp
+  web:
+    image: nginx:1.27.2
+    ports:
+      - "8080:80"                   # not a database port

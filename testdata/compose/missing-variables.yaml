@@ -1,0 +1,17 @@
+# Variables with and without defaults.
+services:
+  app:
+    image: ghcr.io/example/app:${APP_VERSION}
+    ports:
+      - "${HTTP_PORT}:8080"
+      - "${METRICS_BIND:-127.0.0.1}:9090:9090"
+    environment:
+      DATABASE_HOST: ${DB_HOST}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      REQUIRED_TOKEN: ${REQUIRED_TOKEN:?REQUIRED_TOKEN must be set}
+      LITERAL: $$NOT_A_VARIABLE
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health?user=$HEALTH_USER"]
+networks:
+  default:
+    name: ${NETWORK_NAME}

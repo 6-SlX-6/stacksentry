@@ -1,0 +1,203 @@
+StackSentry v0.1.0
+Target: examples/n8n-postgres-compose.yaml (project "n8n")
+Scan time: 2026-10-01T12:00:00Z
+Rules evaluated: 27 of 27
+Services analyzed: 2
+Findings: 0 critical, 1 high, 8 medium, 12 low
+
+HIGH  SST-NET-001  postgres  (examples/n8n-postgres-compose.yaml:30)
+  A database port is published on all host interfaces.
+  Evidence: 5432:5432/tcp (PostgreSQL port published on all host interfaces)
+  Why this matters: Published database ports are reachable from other machines and, on many Linux
+    hosts, bypass host firewalls such as UFW or firewalld because Docker manages its own iptables
+    rules. Databases reachable from the network are frequent targets of credential brute-forcing and
+    ransom attacks.
+  Fix: Remove the ports entry if only other containers need the database; they can reach it over the
+    Compose network by service name. If host access is required, bind to localhost, e.g.
+    "127.0.0.1:5432:5432". Exposure may be intentional, but it should be reviewed.
+
+MEDIUM  SST-CFG-001  n8n  (examples/n8n-postgres-compose.yaml:7)
+  The Compose file uses variables without a default value, so the deployment depends on external
+  configuration.
+  Evidence: ${POSTGRES_PASSWORD} has no default (examples/n8n-postgres-compose.yaml:19,
+              services.n8n.environment.DB_POSTGRESDB_PASSWORD)
+            ${N8N_ENCRYPTION_KEY} has no default (examples/n8n-postgres-compose.yaml:20,
+              services.n8n.environment.N8N_ENCRYPTION_KEY)
+  Why this matters: If such a variable is not set at deploy time, Docker Compose substitutes an
+    empty string and only prints a warning. That can silently produce broken or insecure
+    configuration such as empty passwords, wrong image tags or unexpected port bindings.
+  Fix: Document the variable and provide it in the deployment environment or .env file. Use
+    ${VAR:-default} for a safe default, or ${VAR:?error message} to make Compose fail fast when it
+    is missing.
+
+MEDIUM  SST-CFG-001  postgres  (examples/n8n-postgres-compose.yaml:30)
+  The Compose file uses variables without a default value, so the deployment depends on external
+  configuration.
+  Evidence: ${POSTGRES_PASSWORD} has no default (examples/n8n-postgres-compose.yaml:38,
+              services.postgres.environment.POSTGRES_PASSWORD)
+  Why this matters: If such a variable is not set at deploy time, Docker Compose substitutes an
+    empty string and only prints a warning. That can silently produce broken or insecure
+    configuration such as empty passwords, wrong image tags or unexpected port bindings.
+  Fix: Document the variable and provide it in the deployment environment or .env file. Use
+    ${VAR:-default} for a safe default, or ${VAR:?error message} to make Compose fail fast when it
+    is missing.
+
+MEDIUM  SST-OPS-001  n8n  (examples/n8n-postgres-compose.yaml:7)
+  No healthcheck is defined for the service in the Compose file.
+  Evidence: healthcheck is not defined
+  Why this matters: Without a healthcheck Docker only knows whether the process is running, not
+    whether it works. depends_on with condition: service_healthy, automated recovery and monitoring
+    cannot detect a hung or misconfigured service.
+  Fix: Add a healthcheck that exercises the service (for example an HTTP endpoint or a database
+    ping) with sensible interval, timeout, retries and start_period values.
+
+MEDIUM  SST-OPS-005  n8n  (examples/n8n-postgres-compose.yaml:7)
+  The image uses a mutable tag (latest or no tag at all).
+  Evidence: image: n8nio/n8n:latest
+  Why this matters: Mutable tags can point to a different image every time you pull. Deployments
+    become non-reproducible, rollbacks unreliable, and unreviewed upstream changes can reach
+    production silently.
+  Fix: Pin a specific version tag (for example postgres:16.4) and update it deliberately. For full
+    reproducibility also pin the digest (image: name:tag@sha256:...).
+
+MEDIUM  SST-RES-003  n8n  (examples/n8n-postgres-compose.yaml:7)
+  Container logs are not configured to rotate.
+  Evidence: logging is not configured (the daemon's default log driver applies)
+  Why this matters: Docker's default json-file log driver keeps logs without limit unless max-size
+    is set, so a chatty container can fill the disk.
+  Fix: Configure rotation, for example logging: {driver: json-file, options: {max-size: "10m",
+    max-file: "3"}}, or set log-driver/log-opts once for all containers in the Docker daemon
+    configuration.
+
+MEDIUM  SST-RES-003  postgres  (examples/n8n-postgres-compose.yaml:30)
+  Container logs are not configured to rotate.
+  Evidence: logging is not configured (the daemon's default log driver applies)
+  Why this matters: Docker's default json-file log driver keeps logs without limit unless max-size
+    is set, so a chatty container can fill the disk.
+  Fix: Configure rotation, for example logging: {driver: json-file, options: {max-size: "10m",
+    max-file: "3"}}, or set log-driver/log-opts once for all containers in the Docker daemon
+    configuration.
+
+MEDIUM  SST-SEC-008  n8n  (examples/n8n-postgres-compose.yaml:7)
+  No user is configured, so the container runs as the image's default user, which is root for many
+  images.
+  Evidence: user is not set
+  Why this matters: Processes running as root inside a container have more power if they escape
+    isolation or write to mounted volumes. Without a user setting the effective user depends on the
+    image's USER instruction, which StackSentry cannot see without pulling the image.
+  Fix: Add a dedicated unprivileged user where supported by the image, e.g. user: "1000:1000" or a
+    named user documented by the image (such as node). Make sure mounted volumes are writable by
+    that UID.
+
+MEDIUM  SST-SEC-008  postgres  (examples/n8n-postgres-compose.yaml:30)
+  No user is configured, so the container runs as the image's default user, which is root for many
+  images.
+  Evidence: user is not set
+  Why this matters: Processes running as root inside a container have more power if they escape
+    isolation or write to mounted volumes. Without a user setting the effective user depends on the
+    image's USER instruction, which StackSentry cannot see without pulling the image.
+  Fix: Add a dedicated unprivileged user where supported by the image, e.g. user: "1000:1000" or a
+    named user documented by the image (such as node). Make sure mounted volumes are writable by
+    that UID.
+
+LOW  SST-OPS-004  n8n  (examples/n8n-postgres-compose.yaml:7)
+  The service sets a fixed container_name.
+  Evidence: container_name: n8n
+  Why this matters: Fixed container names must be unique on the host. They prevent scaling the
+    service, can clash with other projects or copies of the same stack, and bypass Compose's
+    project-scoped naming.
+  Fix: Remove container_name and let Compose generate project-scoped names. Other services can reach
+    it by its service name, which works without container_name.
+
+LOW  SST-OPS-006  postgres  (examples/n8n-postgres-compose.yaml:30)
+  The image is pinned by version tag but not by digest.
+  Evidence: image: postgres:16.4 has no @sha256 digest
+  Why this matters: Tags can be re-pushed by the publisher, so the same tag may resolve to different
+    content over time. Pinning the digest guarantees that every deployment runs exactly the reviewed
+    image. This is a reproducibility recommendation, not a security vulnerability.
+  Fix: Append the digest: image: name:tag@sha256:<digest> (look it up with docker buildx imagetools
+    inspect name:tag). Tools such as Renovate or Dependabot can keep digests up to date.
+
+LOW  SST-OPS-007  n8n  (examples/n8n-postgres-compose.yaml:7)
+  No stop_grace_period is set, so Docker kills the container 10 seconds after asking it to stop.
+  Evidence: stop_grace_period is not set (Docker default: 10s)
+  Why this matters: Databases, queues and workflow engines may need more than 10 seconds to flush
+    data, finish jobs or close connections. A forced kill can corrupt data or lose in-flight work.
+  Fix: Set stop_grace_period to match the service's shutdown behavior (for example
+    stop_grace_period: 30s for databases and workflow tools) and make sure the process handles
+    SIGTERM or the configured stop_signal.
+
+LOW  SST-OPS-007  postgres  (examples/n8n-postgres-compose.yaml:30)
+  No stop_grace_period is set, so Docker kills the container 10 seconds after asking it to stop.
+  Evidence: stop_grace_period is not set (Docker default: 10s)
+  Why this matters: Databases, queues and workflow engines may need more than 10 seconds to flush
+    data, finish jobs or close connections. A forced kill can corrupt data or lose in-flight work.
+  Fix: Set stop_grace_period to match the service's shutdown behavior (for example
+    stop_grace_period: 30s for databases and workflow tools) and make sure the process handles
+    SIGTERM or the configured stop_signal.
+
+LOW  SST-RES-001  n8n  (examples/n8n-postgres-compose.yaml:7)
+  No memory limit is configured for the service.
+  Evidence: deploy.resources.limits.memory and mem_limit are not set
+  Why this matters: A memory leak or load spike in one container can consume all host memory and
+    trigger the kernel OOM killer for unrelated processes, including other services on the host.
+  Fix: Set deploy.resources.limits.memory (for example 512M) based on observed usage, or mem_limit
+    for older Compose versions.
+
+LOW  SST-RES-001  postgres  (examples/n8n-postgres-compose.yaml:30)
+  No memory limit is configured for the service.
+  Evidence: deploy.resources.limits.memory and mem_limit are not set
+  Why this matters: A memory leak or load spike in one container can consume all host memory and
+    trigger the kernel OOM killer for unrelated processes, including other services on the host.
+  Fix: Set deploy.resources.limits.memory (for example 512M) based on observed usage, or mem_limit
+    for older Compose versions.
+
+LOW  SST-RES-002  n8n  (examples/n8n-postgres-compose.yaml:7)
+  No CPU limit is configured for the service.
+  Evidence: deploy.resources.limits.cpus and cpus are not set
+  Why this matters: Without a CPU limit a busy or runaway container can starve other services on the
+    same host.
+  Fix: Set deploy.resources.limits.cpus (for example "1.0") or cpus for older Compose versions.
+
+LOW  SST-RES-002  postgres  (examples/n8n-postgres-compose.yaml:30)
+  No CPU limit is configured for the service.
+  Evidence: deploy.resources.limits.cpus and cpus are not set
+  Why this matters: Without a CPU limit a busy or runaway container can starve other services on the
+    same host.
+  Fix: Set deploy.resources.limits.cpus (for example "1.0") or cpus for older Compose versions.
+
+LOW  SST-SEC-005  n8n  (examples/n8n-postgres-compose.yaml:7)
+  The service keeps Docker's default Linux capabilities (cap_drop does not contain ALL).
+  Evidence: cap_drop is not set
+  Why this matters: Docker grants containers a default capability set (for example CHOWN, SETUID,
+    NET_RAW). Most applications need few or none of them. This is a hardening recommendation, not a
+    defect: some images need specific capabilities to start.
+  Fix: Add cap_drop: [ALL] and add back only what the service needs with cap_add (for example
+    NET_BIND_SERVICE to bind ports below 1024). Test the service after the change.
+
+LOW  SST-SEC-005  postgres  (examples/n8n-postgres-compose.yaml:30)
+  The service keeps Docker's default Linux capabilities (cap_drop does not contain ALL).
+  Evidence: cap_drop is not set
+  Why this matters: Docker grants containers a default capability set (for example CHOWN, SETUID,
+    NET_RAW). Most applications need few or none of them. This is a hardening recommendation, not a
+    defect: some images need specific capabilities to start.
+  Fix: Add cap_drop: [ALL] and add back only what the service needs with cap_add (for example
+    NET_BIND_SERVICE to bind ports below 1024). Test the service after the change.
+
+LOW  SST-SEC-009  n8n  (examples/n8n-postgres-compose.yaml:7)
+  The container's root filesystem is writable (read_only: true is not set).
+  Evidence: read_only is not set
+  Why this matters: A read-only root filesystem prevents an attacker from modifying binaries or
+    dropping tools inside the container and makes unexpected writes visible.
+  Fix: Set read_only: true and provide writable locations explicitly with tmpfs (for example /tmp or
+    /run) or volumes for application data. Many applications need some writable directories; test
+    before enforcing.
+
+LOW  SST-SEC-009  postgres  (examples/n8n-postgres-compose.yaml:30)
+  The container's root filesystem is writable (read_only: true is not set).
+  Evidence: read_only is not set
+  Why this matters: A read-only root filesystem prevents an attacker from modifying binaries or
+    dropping tools inside the container and makes unexpected writes visible.
+  Fix: Set read_only: true and provide writable locations explicitly with tmpfs (for example /tmp or
+    /run) or volumes for application data. Many applications need some writable directories; test
+    before enforcing.

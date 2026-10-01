@@ -1,0 +1,4 @@
+# Unsupported structure: services must be a mapping, not a list.
+services:
+  - name: web
+    image: nginx:1.27

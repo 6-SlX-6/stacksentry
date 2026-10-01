@@ -1,0 +1,28 @@
+# Deliberately insecure fixture used by tests. Do not deploy.
+services:
+  app:
+    image: example/app:latest
+    privileged: true
+    network_mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /:/host
+      - ./data:/data
+    environment:
+      DB_PASSWORD: Sup3rS3cretValue!
+      API_TOKEN: tok_live_51Hx9yZq
+    cap_add: [SYS_ADMIN]
+    container_name: app
+
+  db:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres-root-pw-42
+
+  portainer:
+    image: portainer/portainer-ce:2.21.4
+    ports:
+      - "9443:9443"
+      - "2375:2375"
