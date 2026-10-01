@@ -1,0 +1,62 @@
+# golangci-lint v2 configuration. Run with `make lint`.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - bodyclose
+    - copyloopvar
+    - errorlint
+    - gocritic
+    - gosec
+    - misspell
+    - nolintlint
+    - revive
+    - unconvert
+    - unparam
+    - whitespace
+  settings:
+    gosec:
+      excludes:
+        # Reading files named by the user (Compose files, daemon.json) is
+        # the purpose of the tool.
+        - G304
+    misspell:
+      locale: US
+      ignore-rules:
+        - mosquitto # eclipse-mosquitto image name
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+        - name: indent-error-flow
+        - name: error-strings
+        - name: error-naming
+        - name: receiver-naming
+        - name: unused-parameter
+        - name: blank-imports
+        - name: context-as-argument
+  exclusions:
+    presets:
+      - common-false-positives
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - unparam
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/6-SlX-6/stacksentry

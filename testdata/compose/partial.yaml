@@ -1,0 +1,20 @@
+# Partially hardened stack: some services follow best practices, others not.
+services:
+  api:
+    image: ghcr.io/example/api:2.3.1
+    restart: unless-stopped
+    user: "1000:1000"
+    healthcheck:
+      test: ["CMD", "/app/healthcheck"]
+    depends_on:
+      cache:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+  migrate:
+    image: ghcr.io/example/api:2.3.1
+    command: ["/app/migrate"]
+    restart: "no"
+  cache:
+    image: redis:7.4
+    restart: always

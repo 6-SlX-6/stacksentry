@@ -1,0 +1,32 @@
+# DELIBERATELY INSECURE example used to demonstrate StackSentry findings.
+# Do not deploy this file. The credentials below are fake.
+name: insecure-demo
+
+services:
+  # A "management" container with far too much access to the host.
+  manager:
+    image: example/stack-manager:latest           # mutable tag
+    privileged: true                              # privileged container
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # Docker socket mount
+      - ./manager-data:/data                      # writable host bind mount
+    ports:
+      - "8000:8000"
+    # no restart policy, no healthcheck, no user
+
+  # A metrics agent that uses the host network namespace.
+  metrics:
+    image: prom/node-exporter:v1.8.2
+    network_mode: host                            # host networking
+    restart: unless-stopped
+
+  db:
+    image: postgres:latest                        # mutable tag
+    ports:
+      - "5432:5432"                               # PostgreSQL published on all interfaces
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: Winter2024!              # plaintext password (fake)
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    # no restart policy, no healthcheck, no user

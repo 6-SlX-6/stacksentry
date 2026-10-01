@@ -1,0 +1,13 @@
+# Documented exceptions with x-stacksentry.
+services:
+  traefik:
+    image: traefik:v3.1.6
+    container_name: traefik
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    x-stacksentry:
+      ignore:
+        - rule: SST-SEC-001
+          reason: Traefik reads container labels; access is limited to this host.
+        - SST-OPS-004
+        - rule: SST-NOPE-999

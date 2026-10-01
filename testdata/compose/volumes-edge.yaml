@@ -1,0 +1,24 @@
+# Volume and bind mount edge cases.
+services:
+  app:
+    image: example/app:1.0.0
+    volumes:
+      - appdata:/var/lib/app              # named volume
+      - /var/lib/app/cache                # anonymous volume
+      - ./config:/etc/app:ro              # read-only bind
+      - ./uploads:/srv/uploads            # writable bind
+      - type: bind
+        source: /etc/letsencrypt
+        target: /certs
+        read_only: true                   # sensitive, read-only
+      - type: tmpfs
+        target: /tmp
+      - /etc/localtime:/etc/localtime:ro  # harmless read-only system file
+      - /home/deploy/stack/data:/data     # project directory under a home dir
+      - /home/deploy/.ssh:/root/.ssh:ro   # credentials directory
+      - type: bind
+        source: /run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true                   # docker socket, read-only
+volumes:
+  appdata:

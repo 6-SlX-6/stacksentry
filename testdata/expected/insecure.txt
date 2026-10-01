@@ -1,0 +1,390 @@
+StackSentry v0.1.0
+Target: testdata/compose/insecure.yaml (project "compose")
+Scan time: 2026-10-01T12:00:00Z
+Rules evaluated: 27 of 27
+Services analyzed: 3
+Findings: 3 critical, 10 high, 13 medium, 14 low, 2 info
+
+CRITICAL  SST-SEC-001  app  (testdata/compose/insecure.yaml:3)
+  The Docker daemon socket is mounted into the container.
+  Evidence: /var/run/docker.sock:/var/run/docker.sock
+  Why this matters: Access to the Docker socket can effectively grant host-level control: anyone who
+    can talk to it can start privileged containers and mount the host filesystem. Mounting it
+    read-only (:ro) does not restrict API calls.
+  Fix: Remove the mount unless this service explicitly requires Docker daemon access. If it does
+    (for example a reverse proxy reading container labels), put a filtering socket proxy in front of
+    the socket that only allows the required read-only API endpoints.
+
+CRITICAL  SST-SEC-002  app  (testdata/compose/insecure.yaml:3)
+  The service runs in privileged mode.
+  Evidence: privileged: true
+  Why this matters: privileged: true grants all Linux capabilities and access to all host devices
+    and disables most isolation (seccomp, AppArmor/SELinux confinement). A compromise of the process
+    is close to a compromise of the host.
+  Fix: Remove privileged: true. Grant only the specific capabilities (cap_add) or devices (devices)
+    the workload needs, and document why they are required.
+
+CRITICAL  SST-SEC-010  portainer  (testdata/compose/insecure.yaml:24)
+  The service appears to expose or use the Docker Engine API over unencrypted TCP.
+  Evidence: port 2375:2375/tcp publishes the unencrypted Docker API port 2375 (all host interfaces)
+  Confidence: medium
+  Why this matters: The Docker Engine API on TCP port 2375 has neither authentication nor
+    encryption. Anyone who can reach it controls the Docker host, which is equivalent to root
+    access.
+  Fix: Do not publish port 2375. If remote API access is required, use TLS with client certificate
+    verification (port 2376, --tlsverify) or SSH (DOCKER_HOST=ssh://user@host). Keep socket proxies
+    on an internal network and never publish their port.
+
+HIGH  SST-NET-001  db  (testdata/compose/insecure.yaml:17)
+  A database port is published on all host interfaces.
+  Evidence: 5432:5432/tcp (PostgreSQL port published on all host interfaces)
+  Why this matters: Published database ports are reachable from other machines and, on many Linux
+    hosts, bypass host firewalls such as UFW or firewalld because Docker manages its own iptables
+    rules. Databases reachable from the network are frequent targets of credential brute-forcing and
+    ransom attacks.
+  Fix: Remove the ports entry if only other containers need the database; they can reach it over the
+    Compose network by service name. If host access is required, bind to localhost, e.g.
+    "127.0.0.1:5432:5432". Exposure may be intentional, but it should be reviewed.
+
+HIGH  SST-OPS-003  app  (testdata/compose/insecure.yaml:3)
+  No restart policy is configured, so the container stays down after a crash or host reboot.
+  Evidence: restart is missing
+  Why this matters: Docker's default restart policy is "no". A long-running service that crashes, or
+    whose host reboots, stays down until someone intervenes.
+  Fix: Add: restart: unless-stopped (or always / on-failure, depending on the desired behavior).
+
+HIGH  SST-OPS-003  db  (testdata/compose/insecure.yaml:17)
+  No restart policy is configured, so the container stays down after a crash or host reboot.
+  Evidence: restart is missing
+  Why this matters: Docker's default restart policy is "no". A long-running service that crashes, or
+    whose host reboots, stays down until someone intervenes.
+  Fix: Add: restart: unless-stopped (or always / on-failure, depending on the desired behavior).
+
+HIGH  SST-OPS-003  portainer  (testdata/compose/insecure.yaml:24)
+  No restart policy is configured, so the container stays down after a crash or host reboot.
+  Evidence: restart is missing
+  Why this matters: Docker's default restart policy is "no". A long-running service that crashes, or
+    whose host reboots, stays down until someone intervenes.
+  Fix: Add: restart: unless-stopped (or always / on-failure, depending on the desired behavior).
+
+HIGH  SST-SEC-003  app  (testdata/compose/insecure.yaml:3)
+  The service shares the host's network stack (network_mode: host).
+  Evidence: network_mode: host
+  Why this matters: Host networking removes normal Docker network isolation: every port the process
+    opens is reachable on all host interfaces, port publishing rules no longer apply, and the
+    container can reach services bound to the host's localhost.
+  Fix: Use a bridge network and publish only the required ports, preferably bound to 127.0.0.1 or a
+    specific interface. Keep host networking only for workloads that need it (for example some
+    discovery or VPN tools) and document the exception.
+
+HIGH  SST-SEC-004  app  (testdata/compose/insecure.yaml:3)
+  The service adds Linux capabilities that significantly weaken container isolation.
+  Evidence: cap_add: SYS_ADMIN (broad administrative privileges such as mounting filesystems;
+              enables many escape techniques)
+  Why this matters: These capabilities grant kernel-level privileges that are commonly abused for
+    container escapes, for example mounting filesystems, loading kernel modules or tracing other
+    processes.
+  Fix: Remove the listed capabilities from cap_add unless they are strictly required. If one is
+    needed, document why and combine it with cap_drop: [ALL], a non-root user and security_opt:
+    [no-new-privileges:true].
+
+HIGH  SST-SEC-007  app  (testdata/compose/insecure.yaml:3)
+  A sensitive host location is bind-mounted into the container.
+  Evidence: /:/host (read-write): the entire host filesystem
+  Why this matters: System locations such as /, /etc, /proc, /sys, /dev, /root or /var/lib/docker
+    expose host credentials, kernel interfaces, devices or other containers' data. Write access
+    usually allows a full host compromise; even read access can leak secrets.
+  Fix: Mount only the specific file or subdirectory the service needs, read-only where possible.
+    Monitoring agents that legitimately need /proc or /sys should mount them read-only and be
+    reviewed as privileged components.
+
+HIGH  SST-SEC-011  app  (testdata/compose/insecure.yaml:3)
+  An environment variable that looks like a credential has an inline value in the Compose file.
+  Evidence: API_TOKEN=********
+            DB_PASSWORD=********
+  Why this matters: Inline secrets end up in version control, backups, CI logs and docker inspect
+    output, and are visible to everyone who can read the Compose file.
+  Fix: Move the value out of the Compose file: use Docker secrets (with *_FILE variables where the
+    image supports them), an external secret manager, or interpolation such as ${DB_PASSWORD} with
+    the value injected at deploy time from an environment file that is not committed. Rotate the
+    secret if the file was ever shared.
+
+HIGH  SST-SEC-011  db  (testdata/compose/insecure.yaml:17)
+  An environment variable that looks like a credential has an inline value in the Compose file.
+  Evidence: POSTGRES_PASSWORD=********
+  Why this matters: Inline secrets end up in version control, backups, CI logs and docker inspect
+    output, and are visible to everyone who can read the Compose file.
+  Fix: Move the value out of the Compose file: use Docker secrets (with *_FILE variables where the
+    image supports them), an external secret manager, or interpolation such as ${DB_PASSWORD} with
+    the value injected at deploy time from an environment file that is not committed. Rotate the
+    secret if the file was ever shared.
+
+HIGH  SST-STO-001  db  (testdata/compose/insecure.yaml:17)
+  The database service has no volume mounted at its data directory.
+  Evidence: no volume is mounted at /var/lib/postgresql/data (PostgreSQL data directory)
+  Why this matters: Without a volume the data lives in the container's writable layer and is lost
+    when the container is recreated, for example by docker compose down, an image upgrade or a
+    configuration change.
+  Fix: Mount a named volume at the data directory, e.g. "db-data:/var/lib/postgresql/data", declare
+    it under the top-level volumes key and back it up regularly.
+
+MEDIUM  SST-NET-003  portainer  (testdata/compose/insecure.yaml:24)
+  An administration interface appears to be published on all host interfaces.
+  Evidence: portainer/portainer-ce:2.21.4 publishes 9443:9443/tcp on all host interfaces (Portainer)
+            portainer/portainer-ce:2.21.4 publishes 2375:2375/tcp on all host interfaces (Portainer)
+  Why this matters: Admin dashboards provide powerful control over infrastructure or data.
+    Publishing them broadly increases exposure to credential guessing and to vulnerabilities in the
+    tool itself.
+  Fix: Review the exposure. Bind the port to 127.0.0.1 and use an SSH tunnel or VPN, or put the
+    interface behind a reverse proxy with strong authentication and TLS.
+
+MEDIUM  SST-OPS-001  app  (testdata/compose/insecure.yaml:3)
+  No healthcheck is defined for the service in the Compose file.
+  Evidence: healthcheck is not defined
+  Why this matters: Without a healthcheck Docker only knows whether the process is running, not
+    whether it works. depends_on with condition: service_healthy, automated recovery and monitoring
+    cannot detect a hung or misconfigured service.
+  Fix: Add a healthcheck that exercises the service (for example an HTTP endpoint or a database
+    ping) with sensible interval, timeout, retries and start_period values.
+
+MEDIUM  SST-OPS-001  db  (testdata/compose/insecure.yaml:17)
+  No healthcheck is defined for the service in the Compose file.
+  Evidence: healthcheck is not defined
+  Why this matters: Without a healthcheck Docker only knows whether the process is running, not
+    whether it works. depends_on with condition: service_healthy, automated recovery and monitoring
+    cannot detect a hung or misconfigured service.
+  Fix: Add a healthcheck that exercises the service (for example an HTTP endpoint or a database
+    ping) with sensible interval, timeout, retries and start_period values.
+
+MEDIUM  SST-OPS-001  portainer  (testdata/compose/insecure.yaml:24)
+  No healthcheck is defined for the service in the Compose file.
+  Evidence: healthcheck is not defined
+  Why this matters: Without a healthcheck Docker only knows whether the process is running, not
+    whether it works. depends_on with condition: service_healthy, automated recovery and monitoring
+    cannot detect a hung or misconfigured service.
+  Fix: Add a healthcheck that exercises the service (for example an HTTP endpoint or a database
+    ping) with sensible interval, timeout, retries and start_period values.
+
+MEDIUM  SST-OPS-005  app  (testdata/compose/insecure.yaml:3)
+  The image uses a mutable tag (latest or no tag at all).
+  Evidence: image: example/app:latest
+  Why this matters: Mutable tags can point to a different image every time you pull. Deployments
+    become non-reproducible, rollbacks unreliable, and unreviewed upstream changes can reach
+    production silently.
+  Fix: Pin a specific version tag (for example postgres:16.4) and update it deliberately. For full
+    reproducibility also pin the digest (image: name:tag@sha256:...).
+
+MEDIUM  SST-OPS-005  db  (testdata/compose/insecure.yaml:17)
+  The image uses a mutable tag (latest or no tag at all).
+  Evidence: image: postgres (no tag, resolves to latest)
+  Why this matters: Mutable tags can point to a different image every time you pull. Deployments
+    become non-reproducible, rollbacks unreliable, and unreviewed upstream changes can reach
+    production silently.
+  Fix: Pin a specific version tag (for example postgres:16.4) and update it deliberately. For full
+    reproducibility also pin the digest (image: name:tag@sha256:...).
+
+MEDIUM  SST-RES-003  app  (testdata/compose/insecure.yaml:3)
+  Container logs are not configured to rotate.
+  Evidence: logging is not configured (the daemon's default log driver applies)
+  Why this matters: Docker's default json-file log driver keeps logs without limit unless max-size
+    is set, so a chatty container can fill the disk.
+  Fix: Configure rotation, for example logging: {driver: json-file, options: {max-size: "10m",
+    max-file: "3"}}, or set log-driver/log-opts once for all containers in the Docker daemon
+    configuration.
+
+MEDIUM  SST-RES-003  db  (testdata/compose/insecure.yaml:17)
+  Container logs are not configured to rotate.
+  Evidence: logging is not configured (the daemon's default log driver applies)
+  Why this matters: Docker's default json-file log driver keeps logs without limit unless max-size
+    is set, so a chatty container can fill the disk.
+  Fix: Configure rotation, for example logging: {driver: json-file, options: {max-size: "10m",
+    max-file: "3"}}, or set log-driver/log-opts once for all containers in the Docker daemon
+    configuration.
+
+MEDIUM  SST-RES-003  portainer  (testdata/compose/insecure.yaml:24)
+  Container logs are not configured to rotate.
+  Evidence: logging is not configured (the daemon's default log driver applies)
+  Why this matters: Docker's default json-file log driver keeps logs without limit unless max-size
+    is set, so a chatty container can fill the disk.
+  Fix: Configure rotation, for example logging: {driver: json-file, options: {max-size: "10m",
+    max-file: "3"}}, or set log-driver/log-opts once for all containers in the Docker daemon
+    configuration.
+
+MEDIUM  SST-SEC-006  app  (testdata/compose/insecure.yaml:3)
+  A host path is bind-mounted without read-only protection.
+  Evidence: /:/host (read-write)
+            ./data:/data (read-write)
+  Why this matters: A writable bind mount lets the container modify files on the host. If the
+    container is compromised, an attacker can tamper with host files, configuration or data shared
+    with other services.
+  Fix: Append :ro (short syntax) or set read_only: true (long syntax) for mounts the container only
+    reads, such as configuration files. For data the service must write, prefer a named volume or
+    make sure the host directory is dedicated to this service.
+
+MEDIUM  SST-SEC-008  app  (testdata/compose/insecure.yaml:3)
+  No user is configured, so the container runs as the image's default user, which is root for many
+  images.
+  Evidence: user is not set
+  Why this matters: Processes running as root inside a container have more power if they escape
+    isolation or write to mounted volumes. Without a user setting the effective user depends on the
+    image's USER instruction, which StackSentry cannot see without pulling the image.
+  Fix: Add a dedicated unprivileged user where supported by the image, e.g. user: "1000:1000" or a
+    named user documented by the image (such as node). Make sure mounted volumes are writable by
+    that UID.
+
+MEDIUM  SST-SEC-008  db  (testdata/compose/insecure.yaml:17)
+  No user is configured, so the container runs as the image's default user, which is root for many
+  images.
+  Evidence: user is not set
+  Why this matters: Processes running as root inside a container have more power if they escape
+    isolation or write to mounted volumes. Without a user setting the effective user depends on the
+    image's USER instruction, which StackSentry cannot see without pulling the image.
+  Fix: Add a dedicated unprivileged user where supported by the image, e.g. user: "1000:1000" or a
+    named user documented by the image (such as node). Make sure mounted volumes are writable by
+    that UID.
+
+MEDIUM  SST-SEC-008  portainer  (testdata/compose/insecure.yaml:24)
+  No user is configured, so the container runs as the image's default user, which is root for many
+  images.
+  Evidence: user is not set
+  Why this matters: Processes running as root inside a container have more power if they escape
+    isolation or write to mounted volumes. Without a user setting the effective user depends on the
+    image's USER instruction, which StackSentry cannot see without pulling the image.
+  Fix: Add a dedicated unprivileged user where supported by the image, e.g. user: "1000:1000" or a
+    named user documented by the image (such as node). Make sure mounted volumes are writable by
+    that UID.
+
+LOW  SST-OPS-004  app  (testdata/compose/insecure.yaml:3)
+  The service sets a fixed container_name.
+  Evidence: container_name: app
+  Why this matters: Fixed container names must be unique on the host. They prevent scaling the
+    service, can clash with other projects or copies of the same stack, and bypass Compose's
+    project-scoped naming.
+  Fix: Remove container_name and let Compose generate project-scoped names. Other services can reach
+    it by its service name, which works without container_name.
+
+LOW  SST-OPS-006  portainer  (testdata/compose/insecure.yaml:24)
+  The image is pinned by version tag but not by digest.
+  Evidence: image: portainer/portainer-ce:2.21.4 has no @sha256 digest
+  Why this matters: Tags can be re-pushed by the publisher, so the same tag may resolve to different
+    content over time. Pinning the digest guarantees that every deployment runs exactly the reviewed
+    image. This is a reproducibility recommendation, not a security vulnerability.
+  Fix: Append the digest: image: name:tag@sha256:<digest> (look it up with docker buildx imagetools
+    inspect name:tag). Tools such as Renovate or Dependabot can keep digests up to date.
+
+LOW  SST-OPS-007  db  (testdata/compose/insecure.yaml:17)
+  No stop_grace_period is set, so Docker kills the container 10 seconds after asking it to stop.
+  Evidence: stop_grace_period is not set (Docker default: 10s)
+  Why this matters: Databases, queues and workflow engines may need more than 10 seconds to flush
+    data, finish jobs or close connections. A forced kill can corrupt data or lose in-flight work.
+  Fix: Set stop_grace_period to match the service's shutdown behavior (for example
+    stop_grace_period: 30s for databases and workflow tools) and make sure the process handles
+    SIGTERM or the configured stop_signal.
+
+LOW  SST-RES-001  app  (testdata/compose/insecure.yaml:3)
+  No memory limit is configured for the service.
+  Evidence: deploy.resources.limits.memory and mem_limit are not set
+  Why this matters: A memory leak or load spike in one container can consume all host memory and
+    trigger the kernel OOM killer for unrelated processes, including other services on the host.
+  Fix: Set deploy.resources.limits.memory (for example 512M) based on observed usage, or mem_limit
+    for older Compose versions.
+
+LOW  SST-RES-001  db  (testdata/compose/insecure.yaml:17)
+  No memory limit is configured for the service.
+  Evidence: deploy.resources.limits.memory and mem_limit are not set
+  Why this matters: A memory leak or load spike in one container can consume all host memory and
+    trigger the kernel OOM killer for unrelated processes, including other services on the host.
+  Fix: Set deploy.resources.limits.memory (for example 512M) based on observed usage, or mem_limit
+    for older Compose versions.
+
+LOW  SST-RES-001  portainer  (testdata/compose/insecure.yaml:24)
+  No memory limit is configured for the service.
+  Evidence: deploy.resources.limits.memory and mem_limit are not set
+  Why this matters: A memory leak or load spike in one container can consume all host memory and
+    trigger the kernel OOM killer for unrelated processes, including other services on the host.
+  Fix: Set deploy.resources.limits.memory (for example 512M) based on observed usage, or mem_limit
+    for older Compose versions.
+
+LOW  SST-RES-002  app  (testdata/compose/insecure.yaml:3)
+  No CPU limit is configured for the service.
+  Evidence: deploy.resources.limits.cpus and cpus are not set
+  Why this matters: Without a CPU limit a busy or runaway container can starve other services on the
+    same host.
+  Fix: Set deploy.resources.limits.cpus (for example "1.0") or cpus for older Compose versions.
+
+LOW  SST-RES-002  db  (testdata/compose/insecure.yaml:17)
+  No CPU limit is configured for the service.
+  Evidence: deploy.resources.limits.cpus and cpus are not set
+  Why this matters: Without a CPU limit a busy or runaway container can starve other services on the
+    same host.
+  Fix: Set deploy.resources.limits.cpus (for example "1.0") or cpus for older Compose versions.
+
+LOW  SST-RES-002  portainer  (testdata/compose/insecure.yaml:24)
+  No CPU limit is configured for the service.
+  Evidence: deploy.resources.limits.cpus and cpus are not set
+  Why this matters: Without a CPU limit a busy or runaway container can starve other services on the
+    same host.
+  Fix: Set deploy.resources.limits.cpus (for example "1.0") or cpus for older Compose versions.
+
+LOW  SST-SEC-005  db  (testdata/compose/insecure.yaml:17)
+  The service keeps Docker's default Linux capabilities (cap_drop does not contain ALL).
+  Evidence: cap_drop is not set
+  Why this matters: Docker grants containers a default capability set (for example CHOWN, SETUID,
+    NET_RAW). Most applications need few or none of them. This is a hardening recommendation, not a
+    defect: some images need specific capabilities to start.
+  Fix: Add cap_drop: [ALL] and add back only what the service needs with cap_add (for example
+    NET_BIND_SERVICE to bind ports below 1024). Test the service after the change.
+
+LOW  SST-SEC-005  portainer  (testdata/compose/insecure.yaml:24)
+  The service keeps Docker's default Linux capabilities (cap_drop does not contain ALL).
+  Evidence: cap_drop is not set
+  Why this matters: Docker grants containers a default capability set (for example CHOWN, SETUID,
+    NET_RAW). Most applications need few or none of them. This is a hardening recommendation, not a
+    defect: some images need specific capabilities to start.
+  Fix: Add cap_drop: [ALL] and add back only what the service needs with cap_add (for example
+    NET_BIND_SERVICE to bind ports below 1024). Test the service after the change.
+
+LOW  SST-SEC-009  app  (testdata/compose/insecure.yaml:3)
+  The container's root filesystem is writable (read_only: true is not set).
+  Evidence: read_only is not set
+  Why this matters: A read-only root filesystem prevents an attacker from modifying binaries or
+    dropping tools inside the container and makes unexpected writes visible.
+  Fix: Set read_only: true and provide writable locations explicitly with tmpfs (for example /tmp or
+    /run) or volumes for application data. Many applications need some writable directories; test
+    before enforcing.
+
+LOW  SST-SEC-009  db  (testdata/compose/insecure.yaml:17)
+  The container's root filesystem is writable (read_only: true is not set).
+  Evidence: read_only is not set
+  Why this matters: A read-only root filesystem prevents an attacker from modifying binaries or
+    dropping tools inside the container and makes unexpected writes visible.
+  Fix: Set read_only: true and provide writable locations explicitly with tmpfs (for example /tmp or
+    /run) or volumes for application data. Many applications need some writable directories; test
+    before enforcing.
+
+LOW  SST-SEC-009  portainer  (testdata/compose/insecure.yaml:24)
+  The container's root filesystem is writable (read_only: true is not set).
+  Evidence: read_only is not set
+  Why this matters: A read-only root filesystem prevents an attacker from modifying binaries or
+    dropping tools inside the container and makes unexpected writes visible.
+  Fix: Set read_only: true and provide writable locations explicitly with tmpfs (for example /tmp or
+    /run) or volumes for application data. Many applications need some writable directories; test
+    before enforcing.
+
+INFO  SST-OPS-007  app  (testdata/compose/insecure.yaml:3)
+  No stop_grace_period is set, so Docker kills the container 10 seconds after asking it to stop.
+  Evidence: stop_grace_period is not set (Docker default: 10s)
+  Why this matters: Databases, queues and workflow engines may need more than 10 seconds to flush
+    data, finish jobs or close connections. A forced kill can corrupt data or lose in-flight work.
+  Fix: Set stop_grace_period to match the service's shutdown behavior (for example
+    stop_grace_period: 30s for databases and workflow tools) and make sure the process handles
+    SIGTERM or the configured stop_signal.
+
+INFO  SST-OPS-007  portainer  (testdata/compose/insecure.yaml:24)
+  No stop_grace_period is set, so Docker kills the container 10 seconds after asking it to stop.
+  Evidence: stop_grace_period is not set (Docker default: 10s)
+  Why this matters: Databases, queues and workflow engines may need more than 10 seconds to flush
+    data, finish jobs or close connections. A forced kill can corrupt data or lose in-flight work.
+  Fix: Set stop_grace_period to match the service's shutdown behavior (for example
+    stop_grace_period: 30s for databases and workflow tools) and make sure the process handles
+    SIGTERM or the configured stop_signal.

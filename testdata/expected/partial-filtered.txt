@@ -1,0 +1,53 @@
+StackSentry v0.1.0
+Target: testdata/compose/partial.yaml (project "compose")
+Scan time: 2026-10-01T12:00:00Z
+Rules evaluated: 26 of 27
+Services analyzed: 3
+Findings: 0 critical, 0 high, 4 medium, 16 low, 1 info
+
+MEDIUM  SST-OPS-001  cache  (testdata/compose/partial.yaml:18)
+  No healthcheck is defined for the service in the Compose file.
+  Evidence: healthcheck is not defined
+  Why this matters: Without a healthcheck Docker only knows whether the process is running, not
+    whether it works. depends_on with condition: service_healthy, automated recovery and monitoring
+    cannot detect a hung or misconfigured service.
+  Fix: Add a healthcheck that exercises the service (for example an HTTP endpoint or a database
+    ping) with sensible interval, timeout, retries and start_period values.
+
+MEDIUM  SST-SEC-008  cache  (testdata/compose/partial.yaml:18)
+  No user is configured, so the container runs as the image's default user, which is root for many
+  images.
+  Evidence: user is not set
+  Why this matters: Processes running as root inside a container have more power if they escape
+    isolation or write to mounted volumes. Without a user setting the effective user depends on the
+    image's USER instruction, which StackSentry cannot see without pulling the image.
+  Fix: Add a dedicated unprivileged user where supported by the image, e.g. user: "1000:1000" or a
+    named user documented by the image (such as node). Make sure mounted volumes are writable by
+    that UID.
+
+MEDIUM  SST-SEC-008  migrate  (testdata/compose/partial.yaml:14)
+  No user is configured, so the container runs as the image's default user, which is root for many
+  images.
+  Evidence: user is not set
+  Why this matters: Processes running as root inside a container have more power if they escape
+    isolation or write to mounted volumes. Without a user setting the effective user depends on the
+    image's USER instruction, which StackSentry cannot see without pulling the image.
+  Fix: Add a dedicated unprivileged user where supported by the image, e.g. user: "1000:1000" or a
+    named user documented by the image (such as node). Make sure mounted volumes are writable by
+    that UID.
+
+MEDIUM  SST-STO-001  cache  (testdata/compose/partial.yaml:18)
+  The Redis service has no volume at its data directory. If it is only used as a cache this may be
+  intentional.
+  Evidence: no volume is mounted at /data (Redis data directory)
+  Why this matters: Without a volume the data lives in the container's writable layer and is lost
+    when the container is recreated, for example by docker compose down, an image upgrade or a
+    configuration change.
+  Fix: Mount a named volume at the data directory, e.g. "cache-data:/data", declare it under the
+    top-level volumes key and back it up regularly.
+
+Notes:
+  - 17 findings below "medium" not shown (--severity medium); they still count for --fail-on.
+  - 1 rule not evaluated (--only/--exclude): SST-RES-003.
+
+Result: FAIL: 4 findings at or above "medium" (--fail-on medium)
