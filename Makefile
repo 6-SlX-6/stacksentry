@@ -68,8 +68,8 @@ verify-examples: build ## Run documented commands and check their exit codes
 golden: ## Regenerate golden reports (review the diff before committing)
 	$(GO) test ./internal/app -run 'TestGolden' -update
 
-docs: ## Regenerate the rule reference in docs/rules.md
-	$(GO) test ./internal/cli -run TestRulesDocUpToDate -update
+docs: ## Regenerate the rule reference in docs/rules.md and the README rule tables
+	$(GO) test ./internal/cli -run "TestRulesDocUpToDate|TestReadmeRuleTablesUpToDate" -update
 
 release-snapshot: ## Build release binaries and checksums into ./dist
 	./scripts/build-release.sh $(or $(VERSION),v0.0.0-snapshot)

@@ -31,7 +31,7 @@ make run-example    # scan the bundled examples
 | `make fmt` | gofmt and goimports via golangci-lint. |
 | `make vet` | `go vet`. |
 | `make golden` | Regenerate golden reports in `testdata/expected` and `examples/reports`. |
-| `make docs` | Regenerate the rule reference in `docs/rules.md` from rule metadata. |
+| `make docs` | Regenerate the rule reference in `docs/rules.md` and the rule tables in `README.md` from rule metadata. |
 
 Before opening a pull request, run `make fmt vet lint test`.
 
@@ -59,8 +59,9 @@ commit the updated files.
 6. **Add fixtures** to `testdata/compose/` when a rule needs more than a
    snippet, and update golden files with `make golden`.
 7. **Document it** with `make docs`, which regenerates the rule reference in
-   `docs/rules.md` (a test fails if it is out of date). Update the "Planned
-   rules" list if the rule was listed there.
+   `docs/rules.md` and the rule tables in `README.md` (a test fails if either
+   is out of date). Update the "Planned rules" list if the rule was listed
+   there.
 
 ## Rule design standards
 

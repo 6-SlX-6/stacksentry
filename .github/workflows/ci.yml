@@ -153,4 +153,4 @@ jobs:
       - name: Check that generated docs and golden files are up to date
         run: |
           make docs golden
-          git diff --exit-code -- docs/rules.md testdata/expected examples/reports
+          git diff --exit-code -- README.md docs/rules.md testdata/expected examples/reports
