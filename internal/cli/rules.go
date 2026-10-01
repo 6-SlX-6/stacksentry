@@ -225,6 +225,33 @@ func wrapText(body, indent string, width int) []string {
 	return lines
 }
 
+// writeRuleTable renders a Markdown table of the rules of one scope. Rule
+// IDs link to linkPrefix + "#" + lowercase ID.
+func writeRuleTable(b *strings.Builder, scope engine.Scope, linkPrefix string) {
+	fmt.Fprintln(b, "| Rule ID | Severity | Category | Title |")
+	fmt.Fprintln(b, "|---|---|---|---|")
+	for _, m := range app.Rules() {
+		if m.Scope == scope {
+			fmt.Fprintf(b, "| [%s](%s#%s) | %s | %s | %s |\n", m.ID, linkPrefix, strings.ToLower(m.ID), m.Severity, m.Category, report.EscapeMarkdown(m.Title))
+		}
+	}
+}
+
+// writeReadmeRuleTables renders the rule overview embedded in README.md.
+func writeReadmeRuleTables(w io.Writer) error {
+	var b strings.Builder
+	counts := map[engine.Scope]int{}
+	for _, m := range app.Rules() {
+		counts[m.Scope]++
+	}
+	fmt.Fprintf(&b, "### Docker Compose rules (%d)\n\n", counts[engine.ScopeCompose])
+	writeRuleTable(&b, engine.ScopeCompose, "docs/rules.md")
+	fmt.Fprintf(&b, "\n### Docker host rules (%d)\n\n", counts[engine.ScopeHost])
+	writeRuleTable(&b, engine.ScopeHost, "docs/rules.md")
+	_, err := io.WriteString(w, b.String())
+	return err
+}
+
 // writeRulesReference renders the generated part of docs/rules.md: a
 // summary table followed by one section per rule, Compose rules first.
 func writeRulesReference(w io.Writer) error {
@@ -236,13 +263,7 @@ func writeRulesReference(w io.Writer) error {
 			title = "Host rules (`stacksentry scan host`)"
 		}
 		fmt.Fprintf(&b, "## %s\n\n", title)
-		fmt.Fprintln(&b, "| Rule ID | Severity | Category | Title |")
-		fmt.Fprintln(&b, "|---|---|---|---|")
-		for _, m := range all {
-			if m.Scope == scope {
-				fmt.Fprintf(&b, "| [%s](#%s) | %s | %s | %s |\n", m.ID, strings.ToLower(m.ID), m.Severity, m.Category, report.EscapeMarkdown(m.Title))
-			}
-		}
+		writeRuleTable(&b, scope, "")
 		fmt.Fprintln(&b)
 		for _, m := range all {
 			if m.Scope != scope {
