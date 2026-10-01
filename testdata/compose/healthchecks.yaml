@@ -1,0 +1,17 @@
+# Healthcheck cases.
+services:
+  checked:
+    image: example/api:1.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+  unchecked:
+    image: example/api:1.0.0
+  disabled:
+    image: example/api:1.0.0
+    healthcheck:
+      disable: true
+  none-test:
+    image: example/api:1.0.0
+    healthcheck:
+      test: ["NONE"]

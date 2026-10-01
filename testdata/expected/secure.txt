@@ -1,0 +1,8 @@
+StackSentry v0.1.0
+Target: testdata/compose/secure.yaml (project "secure-stack")
+Scan time: 2026-10-01T12:00:00Z
+Rules evaluated: 27 of 27
+Services analyzed: 2
+Findings: 0 critical, 0 high, 0 medium, 0 low
+
+No findings.

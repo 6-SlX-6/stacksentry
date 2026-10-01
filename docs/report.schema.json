@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/report.schema.json",
+  "title": "StackSentry scan report",
+  "description": "JSON report produced by `stacksentry scan compose|host --format json`. Schema version 1.x.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scanner", "scan", "target", "summary", "findings", "suppressed_findings", "skipped_rules", "limitations", "warnings"],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^1\\.[0-9]+\\.[0-9]+$"},
+    "scanner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "stacksentry"},
+        "version": {"type": "string"},
+        "commit": {"type": "string"}
+      }
+    },
+    "scan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "started_at", "finished_at", "rules_total", "rules_evaluated", "options"],
+      "properties": {
+        "type": {"$ref": "#/$defs/scanType"},
+        "started_at": {"$ref": "#/$defs/timestamp"},
+        "finished_at": {"$ref": "#/$defs/timestamp"},
+        "rules_total": {"type": "integer", "minimum": 0},
+        "rules_evaluated": {"type": "integer", "minimum": 0},
+        "options": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min_severity", "fail_on", "only", "exclude"],
+          "properties": {
+            "min_severity": {"$ref": "#/$defs/severity"},
+            "fail_on": {"oneOf": [{"$ref": "#/$defs/severity"}, {"type": "null"}]},
+            "only": {"type": "array", "items": {"$ref": "#/$defs/ruleId"}},
+            "exclude": {"type": "array", "items": {"$ref": "#/$defs/ruleId"}}
+          }
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "name"],
+      "properties": {
+        "type": {"$ref": "#/$defs/scanType"},
+        "name": {"type": "string"},
+        "compose": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["files", "project_name", "service_count", "services"],
+          "properties": {
+            "files": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+            "project_name": {"type": "string"},
+            "service_count": {"type": "integer", "minimum": 0},
+            "services": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "host": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["endpoint", "server_version", "api_version", "operating_system", "os_type", "architecture", "containers_total", "containers_running", "images"],
+          "properties": {
+            "endpoint": {"type": "string"},
+            "server_version": {"type": "string"},
+            "api_version": {"type": "string"},
+            "operating_system": {"type": "string"},
+            "os_type": {"type": "string"},
+            "architecture": {"type": "string"},
+            "containers_total": {"type": "integer", "minimum": 0},
+            "containers_running": {"type": "integer", "minimum": 0},
+            "images": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "by_severity", "displayed", "hidden_below_min_severity", "suppressed", "fail_on", "at_or_above_fail_on", "result"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0, "description": "All findings of the evaluated rules, including those hidden by --severity, excluding suppressed findings."},
+        "by_severity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["critical", "high", "medium", "low", "info"],
+          "properties": {
+            "critical": {"type": "integer", "minimum": 0},
+            "high": {"type": "integer", "minimum": 0},
+            "medium": {"type": "integer", "minimum": 0},
+            "low": {"type": "integer", "minimum": 0},
+            "info": {"type": "integer", "minimum": 0}
+          }
+        },
+        "displayed": {"type": "integer", "minimum": 0},
+        "hidden_below_min_severity": {"type": "integer", "minimum": 0},
+        "suppressed": {"type": "integer", "minimum": 0},
+        "fail_on": {"oneOf": [{"$ref": "#/$defs/severity"}, {"type": "null"}]},
+        "at_or_above_fail_on": {"type": "integer", "minimum": 0},
+        "result": {"enum": ["pass", "fail", "no_threshold"]}
+      }
+    },
+    "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+    "suppressed_findings": {
+      "type": "array",
+      "items": {
+        "allOf": [{"$ref": "#/$defs/findingProperties"}],
+        "required": ["suppression_reason"],
+        "properties": {"suppression_reason": {"type": "string"}},
+        "unevaluatedProperties": false
+      }
+    },
+    "skipped_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule_id", "title", "reason"],
+        "properties": {
+          "rule_id": {"$ref": "#/$defs/ruleId"},
+          "title": {"type": "string"},
+          "reason": {"type": "string"}
+        }
+      }
+    },
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "scanType": {"enum": ["compose", "host"]},
+    "severity": {"enum": ["critical", "high", "medium", "low", "info"]},
+    "ruleId": {"type": "string", "pattern": "^SST-[A-Z]{3,4}-[0-9]{3}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "finding": {
+      "allOf": [{"$ref": "#/$defs/findingProperties"}],
+      "unevaluatedProperties": false
+    },
+    "findingProperties": {
+      "type": "object",
+      "required": ["id", "rule_id", "rule_version", "title", "category", "severity", "confidence", "target_type", "target_name", "description", "evidence", "why_it_matters", "remediation", "timestamp", "scanner_version"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[0-9a-f]{16}$", "description": "Stable fingerprint of rule, target and evidence."},
+        "rule_id": {"$ref": "#/$defs/ruleId"},
+        "rule_version": {"type": "string"},
+        "title": {"type": "string"},
+        "category": {"enum": ["security", "operations", "reliability", "maintainability", "secrets", "networking", "storage", "resource-management", "supply-chain"]},
+        "severity": {"$ref": "#/$defs/severity"},
+        "confidence": {"enum": ["high", "medium", "low"]},
+        "target_type": {"enum": ["service", "project", "container", "host"]},
+        "target_name": {"type": "string"},
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["file"],
+          "properties": {
+            "file": {"type": "string"},
+            "line": {"type": "integer", "minimum": 1}
+          }
+        },
+        "description": {"type": "string"},
+        "evidence": {"type": "array", "items": {"type": "string"}},
+        "why_it_matters": {"type": "string"},
+        "remediation": {"type": "string"},
+        "documentation": {"type": "string", "format": "uri"},
+        "references": {"type": "array", "items": {"type": "string", "format": "uri"}},
+        "timestamp": {"$ref": "#/$defs/timestamp"},
+        "scanner_version": {"type": "string"}
+      }
+    }
+  }
+}

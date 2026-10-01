@@ -1,0 +1,1015 @@
+{
+  "schema_version": "1.0.0",
+  "scanner": {
+    "name": "stacksentry",
+    "version": "0.1.0"
+  },
+  "scan": {
+    "type": "compose",
+    "started_at": "2026-10-01T12:00:00Z",
+    "finished_at": "2026-10-01T12:00:00Z",
+    "rules_total": 27,
+    "rules_evaluated": 27,
+    "options": {
+      "min_severity": "info",
+      "fail_on": null,
+      "only": [],
+      "exclude": []
+    }
+  },
+  "target": {
+    "type": "compose",
+    "name": "examples/insecure-compose.yaml",
+    "compose": {
+      "files": [
+        "examples/insecure-compose.yaml"
+      ],
+      "project_name": "insecure-demo",
+      "service_count": 3,
+      "services": [
+        "db",
+        "manager",
+        "metrics"
+      ]
+    }
+  },
+  "summary": {
+    "total": 35,
+    "by_severity": {
+      "critical": 2,
+      "high": 5,
+      "medium": 13,
+      "low": 13,
+      "info": 2
+    },
+    "displayed": 35,
+    "hidden_below_min_severity": 0,
+    "suppressed": 0,
+    "fail_on": null,
+    "at_or_above_fail_on": 0,
+    "result": "no_threshold"
+  },
+  "findings": [
+    {
+      "id": "8a4326b7c0c9c4a8",
+      "rule_id": "SST-SEC-001",
+      "rule_version": "1.0",
+      "title": "Docker socket mount detected",
+      "category": "security",
+      "severity": "critical",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "The Docker daemon socket is mounted into the container.",
+      "evidence": [
+        "/var/run/docker.sock:/var/run/docker.sock"
+      ],
+      "why_it_matters": "Access to the Docker socket can effectively grant host-level control: anyone who can talk to it can start privileged containers and mount the host filesystem. Mounting it read-only (:ro) does not restrict API calls.",
+      "remediation": "Remove the mount unless this service explicitly requires Docker daemon access. If it does (for example a reverse proxy reading container labels), put a filtering socket proxy in front of the socket that only allows the required read-only API endpoints.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-001",
+      "references": [
+        "https://docs.docker.com/engine/security/#docker-daemon-attack-surface",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "11e6439a2ce73bf0",
+      "rule_id": "SST-SEC-002",
+      "rule_version": "1.0",
+      "title": "Privileged container detected",
+      "category": "security",
+      "severity": "critical",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "The service runs in privileged mode.",
+      "evidence": [
+        "privileged: true"
+      ],
+      "why_it_matters": "privileged: true grants all Linux capabilities and access to all host devices and disables most isolation (seccomp, AppArmor/SELinux confinement). A compromise of the process is close to a compromise of the host.",
+      "remediation": "Remove privileged: true. Grant only the specific capabilities (cap_add) or devices (devices) the workload needs, and document why they are required.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-002",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#privileged",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "e46a3ed4760a2598",
+      "rule_id": "SST-NET-001",
+      "rule_version": "1.0",
+      "title": "Publicly published database port",
+      "category": "networking",
+      "severity": "high",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "A database port is published on all host interfaces.",
+      "evidence": [
+        "5432:5432/tcp (PostgreSQL port published on all host interfaces)"
+      ],
+      "why_it_matters": "Published database ports are reachable from other machines and, on many Linux hosts, bypass host firewalls such as UFW or firewalld because Docker manages its own iptables rules. Databases reachable from the network are frequent targets of credential brute-forcing and ransom attacks.",
+      "remediation": "Remove the ports entry if only other containers need the database; they can reach it over the Compose network by service name. If host access is required, bind to localhost, e.g. \"127.0.0.1:5432:5432\". Exposure may be intentional, but it should be reviewed.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-net-001",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#ports",
+        "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "e0abd0ee9485f606",
+      "rule_id": "SST-OPS-003",
+      "rule_version": "1.0",
+      "title": "No restart policy configured",
+      "category": "reliability",
+      "severity": "high",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "No restart policy is configured, so the container stays down after a crash or host reboot.",
+      "evidence": [
+        "restart is missing"
+      ],
+      "why_it_matters": "Docker's default restart policy is \"no\". A long-running service that crashes, or whose host reboots, stays down until someone intervenes.",
+      "remediation": "Add: restart: unless-stopped (or always / on-failure, depending on the desired behavior).",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-ops-003",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#restart"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "04178f8fc64041ab",
+      "rule_id": "SST-OPS-003",
+      "rule_version": "1.0",
+      "title": "No restart policy configured",
+      "category": "reliability",
+      "severity": "high",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "No restart policy is configured, so the container stays down after a crash or host reboot.",
+      "evidence": [
+        "restart is missing"
+      ],
+      "why_it_matters": "Docker's default restart policy is \"no\". A long-running service that crashes, or whose host reboots, stays down until someone intervenes.",
+      "remediation": "Add: restart: unless-stopped (or always / on-failure, depending on the desired behavior).",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-ops-003",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#restart"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "bde3b223ac5fff85",
+      "rule_id": "SST-SEC-003",
+      "rule_version": "1.0",
+      "title": "Host network mode detected",
+      "category": "security",
+      "severity": "high",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "metrics",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 18
+      },
+      "description": "The service shares the host's network stack (network_mode: host).",
+      "evidence": [
+        "network_mode: host"
+      ],
+      "why_it_matters": "Host networking removes normal Docker network isolation: every port the process opens is reachable on all host interfaces, port publishing rules no longer apply, and the container can reach services bound to the host's localhost.",
+      "remediation": "Use a bridge network and publish only the required ports, preferably bound to 127.0.0.1 or a specific interface. Keep host networking only for workloads that need it (for example some discovery or VPN tools) and document the exception.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-003",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#network_mode"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "b2fd1ad5fc2cc772",
+      "rule_id": "SST-SEC-011",
+      "rule_version": "1.0",
+      "title": "Likely secret in environment variable",
+      "category": "secrets",
+      "severity": "high",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "An environment variable that looks like a credential has an inline value in the Compose file.",
+      "evidence": [
+        "POSTGRES_PASSWORD=********"
+      ],
+      "why_it_matters": "Inline secrets end up in version control, backups, CI logs and docker inspect output, and are visible to everyone who can read the Compose file.",
+      "remediation": "Move the value out of the Compose file: use Docker secrets (with *_FILE variables where the image supports them), an external secret manager, or interpolation such as ${DB_PASSWORD} with the value injected at deploy time from an environment file that is not committed. Rotate the secret if the file was ever shared.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-011",
+      "references": [
+        "https://docs.docker.com/compose/how-tos/use-secrets/",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "5387a2cc6dbccb26",
+      "rule_id": "SST-OPS-001",
+      "rule_version": "1.0",
+      "title": "No healthcheck configured",
+      "category": "reliability",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "No healthcheck is defined for the service in the Compose file.",
+      "evidence": [
+        "healthcheck is not defined"
+      ],
+      "why_it_matters": "Without a healthcheck Docker only knows whether the process is running, not whether it works. depends_on with condition: service_healthy, automated recovery and monitoring cannot detect a hung or misconfigured service.",
+      "remediation": "Add a healthcheck that exercises the service (for example an HTTP endpoint or a database ping) with sensible interval, timeout, retries and start_period values.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-ops-001",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#healthcheck"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "febaea7ba52dc616",
+      "rule_id": "SST-OPS-001",
+      "rule_version": "1.0",
+      "title": "No healthcheck configured",
+      "category": "reliability",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "No healthcheck is defined for the service in the Compose file.",
+      "evidence": [
+        "healthcheck is not defined"
+      ],
+      "why_it_matters": "Without a healthcheck Docker only knows whether the process is running, not whether it works. depends_on with condition: service_healthy, automated recovery and monitoring cannot detect a hung or misconfigured service.",
+      "remediation": "Add a healthcheck that exercises the service (for example an HTTP endpoint or a database ping) with sensible interval, timeout, retries and start_period values.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-ops-001",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#healthcheck"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "c7cb9639234474e7",
+      "rule_id": "SST-OPS-001",
+      "rule_version": "1.0",
+      "title": "No healthcheck configured",
+      "category": "reliability",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "metrics",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 18
+      },
+      "description": "No healthcheck is defined for the service in the Compose file.",
+      "evidence": [
+        "healthcheck is not defined"
+      ],
+      "why_it_matters": "Without a healthcheck Docker only knows whether the process is running, not whether it works. depends_on with condition: service_healthy, automated recovery and monitoring cannot detect a hung or misconfigured service.",
+      "remediation": "Add a healthcheck that exercises the service (for example an HTTP endpoint or a database ping) with sensible interval, timeout, retries and start_period values.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-ops-001",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#healthcheck"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "8a37a6196ef631d1",
+      "rule_id": "SST-OPS-005",
+      "rule_version": "1.0",
+      "title": "Mutable image tag",
+      "category": "supply-chain",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "The image uses a mutable tag (latest or no tag at all).",
+      "evidence": [
+        "image: postgres:latest"
+      ],
+      "why_it_matters": "Mutable tags can point to a different image every time you pull. Deployments become non-reproducible, rollbacks unreliable, and unreviewed upstream changes can reach production silently.",
+      "remediation": "Pin a specific version tag (for example postgres:16.4) and update it deliberately. For full reproducibility also pin the digest (image: name:tag@sha256:...).",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-ops-005",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#image"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "ac6f66e69a34d68b",
+      "rule_id": "SST-OPS-005",
+      "rule_version": "1.0",
+      "title": "Mutable image tag",
+      "category": "supply-chain",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "The image uses a mutable tag (latest or no tag at all).",
+      "evidence": [
+        "image: example/stack-manager:latest"
+      ],
+      "why_it_matters": "Mutable tags can point to a different image every time you pull. Deployments become non-reproducible, rollbacks unreliable, and unreviewed upstream changes can reach production silently.",
+      "remediation": "Pin a specific version tag (for example postgres:16.4) and update it deliberately. For full reproducibility also pin the digest (image: name:tag@sha256:...).",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-ops-005",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#image"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "f7a23f323ebef2d0",
+      "rule_id": "SST-RES-003",
+      "rule_version": "1.0",
+      "title": "No log rotation configured",
+      "category": "resource-management",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "Container logs are not configured to rotate.",
+      "evidence": [
+        "logging is not configured (the daemon's default log driver applies)"
+      ],
+      "why_it_matters": "Docker's default json-file log driver keeps logs without limit unless max-size is set, so a chatty container can fill the disk.",
+      "remediation": "Configure rotation, for example logging: {driver: json-file, options: {max-size: \"10m\", max-file: \"3\"}}, or set log-driver/log-opts once for all containers in the Docker daemon configuration.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-res-003",
+      "references": [
+        "https://docs.docker.com/engine/logging/drivers/json-file/"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "8423be042e1edaa2",
+      "rule_id": "SST-RES-003",
+      "rule_version": "1.0",
+      "title": "No log rotation configured",
+      "category": "resource-management",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "Container logs are not configured to rotate.",
+      "evidence": [
+        "logging is not configured (the daemon's default log driver applies)"
+      ],
+      "why_it_matters": "Docker's default json-file log driver keeps logs without limit unless max-size is set, so a chatty container can fill the disk.",
+      "remediation": "Configure rotation, for example logging: {driver: json-file, options: {max-size: \"10m\", max-file: \"3\"}}, or set log-driver/log-opts once for all containers in the Docker daemon configuration.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-res-003",
+      "references": [
+        "https://docs.docker.com/engine/logging/drivers/json-file/"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "9a9e3f605b6f3919",
+      "rule_id": "SST-RES-003",
+      "rule_version": "1.0",
+      "title": "No log rotation configured",
+      "category": "resource-management",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "metrics",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 18
+      },
+      "description": "Container logs are not configured to rotate.",
+      "evidence": [
+        "logging is not configured (the daemon's default log driver applies)"
+      ],
+      "why_it_matters": "Docker's default json-file log driver keeps logs without limit unless max-size is set, so a chatty container can fill the disk.",
+      "remediation": "Configure rotation, for example logging: {driver: json-file, options: {max-size: \"10m\", max-file: \"3\"}}, or set log-driver/log-opts once for all containers in the Docker daemon configuration.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-res-003",
+      "references": [
+        "https://docs.docker.com/engine/logging/drivers/json-file/"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "84b0a1c5346329cf",
+      "rule_id": "SST-SEC-006",
+      "rule_version": "1.0",
+      "title": "Writable host bind mount",
+      "category": "security",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "A host path is bind-mounted without read-only protection.",
+      "evidence": [
+        "./pgdata:/var/lib/postgresql/data (read-write)"
+      ],
+      "why_it_matters": "A writable bind mount lets the container modify files on the host. If the container is compromised, an attacker can tamper with host files, configuration or data shared with other services.",
+      "remediation": "Append :ro (short syntax) or set read_only: true (long syntax) for mounts the container only reads, such as configuration files. For data the service must write, prefer a named volume or make sure the host directory is dedicated to this service.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-006",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#volumes"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "b2f9760455c84d66",
+      "rule_id": "SST-SEC-006",
+      "rule_version": "1.0",
+      "title": "Writable host bind mount",
+      "category": "security",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "A host path is bind-mounted without read-only protection.",
+      "evidence": [
+        "./manager-data:/data (read-write)"
+      ],
+      "why_it_matters": "A writable bind mount lets the container modify files on the host. If the container is compromised, an attacker can tamper with host files, configuration or data shared with other services.",
+      "remediation": "Append :ro (short syntax) or set read_only: true (long syntax) for mounts the container only reads, such as configuration files. For data the service must write, prefer a named volume or make sure the host directory is dedicated to this service.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-006",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#volumes"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "14b1a7aadda5e849",
+      "rule_id": "SST-SEC-008",
+      "rule_version": "1.0",
+      "title": "No explicit non-root user",
+      "category": "security",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "No user is configured, so the container runs as the image's default user, which is root for many images.",
+      "evidence": [
+        "user is not set"
+      ],
+      "why_it_matters": "Processes running as root inside a container have more power if they escape isolation or write to mounted volumes. Without a user setting the effective user depends on the image's USER instruction, which StackSentry cannot see without pulling the image.",
+      "remediation": "Add a dedicated unprivileged user where supported by the image, e.g. user: \"1000:1000\" or a named user documented by the image (such as node). Make sure mounted volumes are writable by that UID.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-008",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#user",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "2e55dad7f452d088",
+      "rule_id": "SST-SEC-008",
+      "rule_version": "1.0",
+      "title": "No explicit non-root user",
+      "category": "security",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "No user is configured, so the container runs as the image's default user, which is root for many images.",
+      "evidence": [
+        "user is not set"
+      ],
+      "why_it_matters": "Processes running as root inside a container have more power if they escape isolation or write to mounted volumes. Without a user setting the effective user depends on the image's USER instruction, which StackSentry cannot see without pulling the image.",
+      "remediation": "Add a dedicated unprivileged user where supported by the image, e.g. user: \"1000:1000\" or a named user documented by the image (such as node). Make sure mounted volumes are writable by that UID.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-008",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#user",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "5324530cf71097ca",
+      "rule_id": "SST-SEC-008",
+      "rule_version": "1.0",
+      "title": "No explicit non-root user",
+      "category": "security",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "metrics",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 18
+      },
+      "description": "No user is configured, so the container runs as the image's default user, which is root for many images.",
+      "evidence": [
+        "user is not set"
+      ],
+      "why_it_matters": "Processes running as root inside a container have more power if they escape isolation or write to mounted volumes. Without a user setting the effective user depends on the image's USER instruction, which StackSentry cannot see without pulling the image.",
+      "remediation": "Add a dedicated unprivileged user where supported by the image, e.g. user: \"1000:1000\" or a named user documented by the image (such as node). Make sure mounted volumes are writable by that UID.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-008",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#user",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "5321001fd812558b",
+      "rule_id": "SST-OPS-006",
+      "rule_version": "1.0",
+      "title": "Image digest not pinned",
+      "category": "supply-chain",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "metrics",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 18
+      },
+      "description": "The image is pinned by version tag but not by digest.",
+      "evidence": [
+        "image: prom/node-exporter:v1.8.2 has no @sha256 digest"
+      ],
+      "why_it_matters": "Tags can be re-pushed by the publisher, so the same tag may resolve to different content over time. Pinning the digest guarantees that every deployment runs exactly the reviewed image. This is a reproducibility recommendation, not a security vulnerability.",
+      "remediation": "Append the digest: image: name:tag@sha256:<digest> (look it up with docker buildx imagetools inspect name:tag). Tools such as Renovate or Dependabot can keep digests up to date.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-ops-006",
+      "references": [
+        "https://docs.docker.com/reference/cli/docker/image/pull/#pull-an-image-by-digest-immutable-identifier"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "efea3c918d90e1af",
+      "rule_id": "SST-OPS-007",
+      "rule_version": "1.0",
+      "title": "No stop grace period",
+      "category": "reliability",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "No stop_grace_period is set, so Docker kills the container 10 seconds after asking it to stop.",
+      "evidence": [
+        "stop_grace_period is not set (Docker default: 10s)"
+      ],
+      "why_it_matters": "Databases, queues and workflow engines may need more than 10 seconds to flush data, finish jobs or close connections. A forced kill can corrupt data or lose in-flight work.",
+      "remediation": "Set stop_grace_period to match the service's shutdown behavior (for example stop_grace_period: 30s for databases and workflow tools) and make sure the process handles SIGTERM or the configured stop_signal.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-ops-007",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#stop_grace_period"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "f80959f58fed3493",
+      "rule_id": "SST-RES-001",
+      "rule_version": "1.0",
+      "title": "No memory limit configured",
+      "category": "resource-management",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "No memory limit is configured for the service.",
+      "evidence": [
+        "deploy.resources.limits.memory and mem_limit are not set"
+      ],
+      "why_it_matters": "A memory leak or load spike in one container can consume all host memory and trigger the kernel OOM killer for unrelated processes, including other services on the host.",
+      "remediation": "Set deploy.resources.limits.memory (for example 512M) based on observed usage, or mem_limit for older Compose versions.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-res-001",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/deploy/#resources"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "3d9b9633bebf826e",
+      "rule_id": "SST-RES-001",
+      "rule_version": "1.0",
+      "title": "No memory limit configured",
+      "category": "resource-management",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "No memory limit is configured for the service.",
+      "evidence": [
+        "deploy.resources.limits.memory and mem_limit are not set"
+      ],
+      "why_it_matters": "A memory leak or load spike in one container can consume all host memory and trigger the kernel OOM killer for unrelated processes, including other services on the host.",
+      "remediation": "Set deploy.resources.limits.memory (for example 512M) based on observed usage, or mem_limit for older Compose versions.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-res-001",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/deploy/#resources"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "62daf3ef6a28adfa",
+      "rule_id": "SST-RES-001",
+      "rule_version": "1.0",
+      "title": "No memory limit configured",
+      "category": "resource-management",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "metrics",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 18
+      },
+      "description": "No memory limit is configured for the service.",
+      "evidence": [
+        "deploy.resources.limits.memory and mem_limit are not set"
+      ],
+      "why_it_matters": "A memory leak or load spike in one container can consume all host memory and trigger the kernel OOM killer for unrelated processes, including other services on the host.",
+      "remediation": "Set deploy.resources.limits.memory (for example 512M) based on observed usage, or mem_limit for older Compose versions.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-res-001",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/deploy/#resources"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "ce4318ae8b7a86f7",
+      "rule_id": "SST-RES-002",
+      "rule_version": "1.0",
+      "title": "No CPU limit configured",
+      "category": "resource-management",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "No CPU limit is configured for the service.",
+      "evidence": [
+        "deploy.resources.limits.cpus and cpus are not set"
+      ],
+      "why_it_matters": "Without a CPU limit a busy or runaway container can starve other services on the same host.",
+      "remediation": "Set deploy.resources.limits.cpus (for example \"1.0\") or cpus for older Compose versions.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-res-002",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/deploy/#resources"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "58d522e06a42a1ce",
+      "rule_id": "SST-RES-002",
+      "rule_version": "1.0",
+      "title": "No CPU limit configured",
+      "category": "resource-management",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "No CPU limit is configured for the service.",
+      "evidence": [
+        "deploy.resources.limits.cpus and cpus are not set"
+      ],
+      "why_it_matters": "Without a CPU limit a busy or runaway container can starve other services on the same host.",
+      "remediation": "Set deploy.resources.limits.cpus (for example \"1.0\") or cpus for older Compose versions.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-res-002",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/deploy/#resources"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "7916cf61d712914c",
+      "rule_id": "SST-RES-002",
+      "rule_version": "1.0",
+      "title": "No CPU limit configured",
+      "category": "resource-management",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "metrics",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 18
+      },
+      "description": "No CPU limit is configured for the service.",
+      "evidence": [
+        "deploy.resources.limits.cpus and cpus are not set"
+      ],
+      "why_it_matters": "Without a CPU limit a busy or runaway container can starve other services on the same host.",
+      "remediation": "Set deploy.resources.limits.cpus (for example \"1.0\") or cpus for older Compose versions.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-res-002",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/deploy/#resources"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "dba250fbe1fee675",
+      "rule_id": "SST-SEC-005",
+      "rule_version": "1.0",
+      "title": "Linux capabilities not dropped",
+      "category": "security",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "The service keeps Docker's default Linux capabilities (cap_drop does not contain ALL).",
+      "evidence": [
+        "cap_drop is not set"
+      ],
+      "why_it_matters": "Docker grants containers a default capability set (for example CHOWN, SETUID, NET_RAW). Most applications need few or none of them. This is a hardening recommendation, not a defect: some images need specific capabilities to start.",
+      "remediation": "Add cap_drop: [ALL] and add back only what the service needs with cap_add (for example NET_BIND_SERVICE to bind ports below 1024). Test the service after the change.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-005",
+      "references": [
+        "https://man7.org/linux/man-pages/man7/capabilities.7.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "670c84fc5c14dd95",
+      "rule_id": "SST-SEC-005",
+      "rule_version": "1.0",
+      "title": "Linux capabilities not dropped",
+      "category": "security",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "metrics",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 18
+      },
+      "description": "The service keeps Docker's default Linux capabilities (cap_drop does not contain ALL).",
+      "evidence": [
+        "cap_drop is not set"
+      ],
+      "why_it_matters": "Docker grants containers a default capability set (for example CHOWN, SETUID, NET_RAW). Most applications need few or none of them. This is a hardening recommendation, not a defect: some images need specific capabilities to start.",
+      "remediation": "Add cap_drop: [ALL] and add back only what the service needs with cap_add (for example NET_BIND_SERVICE to bind ports below 1024). Test the service after the change.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-005",
+      "references": [
+        "https://man7.org/linux/man-pages/man7/capabilities.7.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "5e76831ce110799e",
+      "rule_id": "SST-SEC-009",
+      "rule_version": "1.0",
+      "title": "Read-only root filesystem not enabled",
+      "category": "security",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "db",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 23
+      },
+      "description": "The container's root filesystem is writable (read_only: true is not set).",
+      "evidence": [
+        "read_only is not set"
+      ],
+      "why_it_matters": "A read-only root filesystem prevents an attacker from modifying binaries or dropping tools inside the container and makes unexpected writes visible.",
+      "remediation": "Set read_only: true and provide writable locations explicitly with tmpfs (for example /tmp or /run) or volumes for application data. Many applications need some writable directories; test before enforcing.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-009",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#read_only",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "6fcfdc6a8f6e7baa",
+      "rule_id": "SST-SEC-009",
+      "rule_version": "1.0",
+      "title": "Read-only root filesystem not enabled",
+      "category": "security",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "The container's root filesystem is writable (read_only: true is not set).",
+      "evidence": [
+        "read_only is not set"
+      ],
+      "why_it_matters": "A read-only root filesystem prevents an attacker from modifying binaries or dropping tools inside the container and makes unexpected writes visible.",
+      "remediation": "Set read_only: true and provide writable locations explicitly with tmpfs (for example /tmp or /run) or volumes for application data. Many applications need some writable directories; test before enforcing.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-009",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#read_only",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "1ca18149bc7a5054",
+      "rule_id": "SST-SEC-009",
+      "rule_version": "1.0",
+      "title": "Read-only root filesystem not enabled",
+      "category": "security",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "metrics",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 18
+      },
+      "description": "The container's root filesystem is writable (read_only: true is not set).",
+      "evidence": [
+        "read_only is not set"
+      ],
+      "why_it_matters": "A read-only root filesystem prevents an attacker from modifying binaries or dropping tools inside the container and makes unexpected writes visible.",
+      "remediation": "Set read_only: true and provide writable locations explicitly with tmpfs (for example /tmp or /run) or volumes for application data. Many applications need some writable directories; test before enforcing.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-sec-009",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#read_only",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "33b544e8db7c8566",
+      "rule_id": "SST-OPS-007",
+      "rule_version": "1.0",
+      "title": "No stop grace period",
+      "category": "reliability",
+      "severity": "info",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "manager",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 7
+      },
+      "description": "No stop_grace_period is set, so Docker kills the container 10 seconds after asking it to stop.",
+      "evidence": [
+        "stop_grace_period is not set (Docker default: 10s)"
+      ],
+      "why_it_matters": "Databases, queues and workflow engines may need more than 10 seconds to flush data, finish jobs or close connections. A forced kill can corrupt data or lose in-flight work.",
+      "remediation": "Set stop_grace_period to match the service's shutdown behavior (for example stop_grace_period: 30s for databases and workflow tools) and make sure the process handles SIGTERM or the configured stop_signal.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-ops-007",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#stop_grace_period"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "cac81f078cf973ef",
+      "rule_id": "SST-OPS-007",
+      "rule_version": "1.0",
+      "title": "No stop grace period",
+      "category": "reliability",
+      "severity": "info",
+      "confidence": "high",
+      "target_type": "service",
+      "target_name": "metrics",
+      "location": {
+        "file": "examples/insecure-compose.yaml",
+        "line": 18
+      },
+      "description": "No stop_grace_period is set, so Docker kills the container 10 seconds after asking it to stop.",
+      "evidence": [
+        "stop_grace_period is not set (Docker default: 10s)"
+      ],
+      "why_it_matters": "Databases, queues and workflow engines may need more than 10 seconds to flush data, finish jobs or close connections. A forced kill can corrupt data or lose in-flight work.",
+      "remediation": "Set stop_grace_period to match the service's shutdown behavior (for example stop_grace_period: 30s for databases and workflow tools) and make sure the process handles SIGTERM or the configured stop_signal.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-ops-007",
+      "references": [
+        "https://docs.docker.com/reference/compose-file/services/#stop_grace_period"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    }
+  ],
+  "suppressed_findings": [],
+  "skipped_rules": [],
+  "limitations": [],
+  "warnings": []
+}

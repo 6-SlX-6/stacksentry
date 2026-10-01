@@ -1,0 +1,33 @@
+StackSentry v0.1.0
+Target: examples/reasonably-secure-compose.yaml (project "git-stack")
+Scan time: 2026-10-01T12:00:00Z
+Rules evaluated: 27 of 27
+Services analyzed: 3
+Findings: 0 critical, 0 high, 0 medium, 3 low
+
+LOW  SST-OPS-006  db  (examples/reasonably-secure-compose.yaml:79)
+  The image is pinned by version tag but not by digest.
+  Evidence: image: postgres:16.4-alpine has no @sha256 digest
+  Why this matters: Tags can be re-pushed by the publisher, so the same tag may resolve to different
+    content over time. Pinning the digest guarantees that every deployment runs exactly the reviewed
+    image. This is a reproducibility recommendation, not a security vulnerability.
+  Fix: Append the digest: image: name:tag@sha256:<digest> (look it up with docker buildx imagetools
+    inspect name:tag). Tools such as Renovate or Dependabot can keep digests up to date.
+
+LOW  SST-OPS-006  gitea  (examples/reasonably-secure-compose.yaml:44)
+  The image is pinned by version tag but not by digest.
+  Evidence: image: gitea/gitea:1.22.3-rootless has no @sha256 digest
+  Why this matters: Tags can be re-pushed by the publisher, so the same tag may resolve to different
+    content over time. Pinning the digest guarantees that every deployment runs exactly the reviewed
+    image. This is a reproducibility recommendation, not a security vulnerability.
+  Fix: Append the digest: image: name:tag@sha256:<digest> (look it up with docker buildx imagetools
+    inspect name:tag). Tools such as Renovate or Dependabot can keep digests up to date.
+
+LOW  SST-OPS-006  proxy  (examples/reasonably-secure-compose.yaml:17)
+  The image is pinned by version tag but not by digest.
+  Evidence: image: caddy:2.8.4-alpine has no @sha256 digest
+  Why this matters: Tags can be re-pushed by the publisher, so the same tag may resolve to different
+    content over time. Pinning the digest guarantees that every deployment runs exactly the reviewed
+    image. This is a reproducibility recommendation, not a security vulnerability.
+  Fix: Append the digest: image: name:tag@sha256:<digest> (look it up with docker buildx imagetools
+    inspect name:tag). Tools such as Renovate or Dependabot can keep digests up to date.

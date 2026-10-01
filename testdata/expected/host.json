@@ -1,0 +1,325 @@
+{
+  "schema_version": "1.0.0",
+  "scanner": {
+    "name": "stacksentry",
+    "version": "0.1.0"
+  },
+  "scan": {
+    "type": "host",
+    "started_at": "2026-10-01T12:00:00Z",
+    "finished_at": "2026-10-01T12:00:00Z",
+    "rules_total": 10,
+    "rules_evaluated": 10,
+    "options": {
+      "min_severity": "info",
+      "fail_on": null,
+      "only": [],
+      "exclude": []
+    }
+  },
+  "target": {
+    "type": "host",
+    "name": "unix:///var/run/docker.sock",
+    "host": {
+      "endpoint": "unix:///var/run/docker.sock",
+      "server_version": "27.3.1",
+      "api_version": "1.47",
+      "operating_system": "Ubuntu 24.04.1 LTS",
+      "os_type": "linux",
+      "architecture": "amd64",
+      "containers_total": 3,
+      "containers_running": 2,
+      "images": 4
+    }
+  },
+  "summary": {
+    "total": 11,
+    "by_severity": {
+      "critical": 4,
+      "high": 2,
+      "medium": 2,
+      "low": 1,
+      "info": 2
+    },
+    "displayed": 11,
+    "hidden_below_min_severity": 0,
+    "suppressed": 0,
+    "fail_on": null,
+    "at_or_above_fail_on": 0,
+    "result": "no_threshold"
+  },
+  "findings": [
+    {
+      "id": "9790ae69fd33b783",
+      "rule_id": "SST-HOST-002",
+      "rule_version": "1.0",
+      "title": "Docker daemon TCP listener",
+      "category": "security",
+      "severity": "critical",
+      "confidence": "medium",
+      "target_type": "host",
+      "target_name": "docker-01",
+      "description": "The Docker daemon appears to accept API connections over TCP without TLS client verification.",
+      "evidence": [
+        "/proc/net/tcp: tcp://0.0.0.0:2375, a process listens on the unencrypted Docker API port 2375 (reachable from the network)"
+      ],
+      "why_it_matters": "The Docker API grants full control over the host. Without TLS client certificate verification, anyone who can reach the TCP port can run privileged containers, which is equivalent to root access.",
+      "remediation": "Remove tcp:// entries from the daemon's -H flags and daemon.json \"hosts\", or enable TLS with --tlsverify and client certificates (port 2376). For remote administration prefer SSH (DOCKER_HOST=ssh://user@host) or a VPN.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-host-002",
+      "references": [
+        "https://docs.docker.com/engine/security/protect-access/",
+        "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "e848263215640f97",
+      "rule_id": "SST-HOST-003",
+      "rule_version": "1.0",
+      "title": "Privileged container running",
+      "category": "security",
+      "severity": "critical",
+      "confidence": "high",
+      "target_type": "container",
+      "target_name": "watchtower",
+      "description": "A running container was started in privileged mode.",
+      "evidence": [
+        "container ID: 222222222222",
+        "privileged: true"
+      ],
+      "why_it_matters": "Privileged containers have all capabilities and access to host devices; a compromise is close to a compromise of the host.",
+      "remediation": "Recreate the container without --privileged / privileged: true and grant only the specific capabilities or devices it needs.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-host-003",
+      "references": [
+        "https://docs.docker.com/reference/cli/docker/container/run/#privileged"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "44603cc8cc3cd3bb",
+      "rule_id": "SST-HOST-004",
+      "rule_version": "1.0",
+      "title": "Container mounts Docker socket",
+      "category": "security",
+      "severity": "critical",
+      "confidence": "high",
+      "target_type": "container",
+      "target_name": "traefik",
+      "description": "A running container has the Docker daemon socket mounted.",
+      "evidence": [
+        "container ID: 111111111111",
+        "/var/run/docker.sock -> /var/run/docker.sock (read-only)"
+      ],
+      "why_it_matters": "Access to the Docker socket can effectively grant host-level control, even when it is mounted read-only.",
+      "remediation": "Remove the socket mount unless the container must control Docker. If it must, use a filtering socket proxy that only allows the required read-only API endpoints.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-host-004",
+      "references": [
+        "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "ae969d372104c2ef",
+      "rule_id": "SST-HOST-004",
+      "rule_version": "1.0",
+      "title": "Container mounts Docker socket",
+      "category": "security",
+      "severity": "critical",
+      "confidence": "high",
+      "target_type": "container",
+      "target_name": "watchtower",
+      "description": "A running container has the Docker daemon socket mounted.",
+      "evidence": [
+        "container ID: 222222222222",
+        "/var/run/docker.sock -> /var/run/docker.sock (read-write)"
+      ],
+      "why_it_matters": "Access to the Docker socket can effectively grant host-level control, even when it is mounted read-only.",
+      "remediation": "Remove the socket mount unless the container must control Docker. If it must, use a filtering socket proxy that only allows the required read-only API endpoints.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-host-004",
+      "references": [
+        "https://docs.docker.com/engine/security/#docker-daemon-attack-surface"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "55f77920f60e6c1c",
+      "rule_id": "SST-HOST-005",
+      "rule_version": "1.0",
+      "title": "Container uses host network",
+      "category": "security",
+      "severity": "high",
+      "confidence": "high",
+      "target_type": "container",
+      "target_name": "watchtower",
+      "description": "A running container shares the host's network namespace.",
+      "evidence": [
+        "container ID: 222222222222",
+        "network mode: host"
+      ],
+      "why_it_matters": "Host networking removes Docker network isolation; every port the process opens is reachable on all host interfaces.",
+      "remediation": "Recreate the container on a bridge network and publish only the required ports, preferably bound to 127.0.0.1 or a specific interface.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-host-005",
+      "references": [
+        "https://docs.docker.com/engine/network/drivers/host/"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "7eb5618700c08a0f",
+      "rule_id": "SST-HOST-006",
+      "rule_version": "1.0",
+      "title": "Container without restart policy",
+      "category": "reliability",
+      "severity": "high",
+      "confidence": "high",
+      "target_type": "container",
+      "target_name": "watchtower",
+      "description": "A running container has no restart policy and will stay down after a crash or host reboot.",
+      "evidence": [
+        "container ID: 222222222222",
+        "restart policy: not set"
+      ],
+      "why_it_matters": "Docker's default restart policy is \"no\". Long-running services without a restart policy need manual intervention after failures or reboots.",
+      "remediation": "Recreate the container with a restart policy such as unless-stopped (docker update --restart unless-stopped <container> also works without recreating it).",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-host-006",
+      "references": [
+        "https://docs.docker.com/engine/containers/start-containers-automatically/"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "8b2a429b5cf4fb6a",
+      "rule_id": "SST-HOST-009",
+      "rule_version": "1.0",
+      "title": "Docker disk usage pressure",
+      "category": "resource-management",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "host",
+      "target_name": "docker-01",
+      "description": "A large amount of Docker disk space is reclaimable.",
+      "evidence": [
+        "total Docker disk usage: 32.0 GiB, reclaimable: 26.0 GiB (81%)",
+        "images: 4 using 30.0 GiB (24.0 GiB reclaimable)",
+        "containers: 0 using 0 B (0 B reclaimable)",
+        "volumes: 0 using 0 B (0 B reclaimable)",
+        "build cache: 0 using 2.0 GiB (2.0 GiB reclaimable)"
+      ],
+      "why_it_matters": "Unused images, stopped containers, unused volumes and build cache accumulate over time. When the filesystem holding Docker's data fills up, containers fail to start, write or log.",
+      "remediation": "Review docker system df -v and remove unused data with docker image prune, docker builder prune and, carefully, docker volume prune. Consider scheduled cleanup and monitoring of the Docker data filesystem.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-host-009",
+      "references": [
+        "https://docs.docker.com/engine/manage-resources/pruning/"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "7a7068d05fe38a72",
+      "rule_id": "SST-HOST-010",
+      "rule_version": "1.0",
+      "title": "Running container uses mutable image reference",
+      "category": "supply-chain",
+      "severity": "medium",
+      "confidence": "high",
+      "target_type": "container",
+      "target_name": "watchtower",
+      "description": "A running container was created from a mutable image reference (latest or no tag).",
+      "evidence": [
+        "container ID: 222222222222",
+        "image: containrrr/watchtower"
+      ],
+      "why_it_matters": "Recreating the container may silently pull a different image, which makes deployments non-reproducible and rollbacks unreliable.",
+      "remediation": "Recreate the container from a pinned version tag, ideally with a digest (name:tag@sha256:...).",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-host-010",
+      "references": [
+        "https://docs.docker.com/reference/cli/docker/image/pull/#pull-an-image-by-digest-immutable-identifier"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "4ec9b8f4492df112",
+      "rule_id": "SST-HOST-008",
+      "rule_version": "1.0",
+      "title": "Dangling images",
+      "category": "resource-management",
+      "severity": "low",
+      "confidence": "high",
+      "target_type": "host",
+      "target_name": "docker-01",
+      "description": "The host stores dangling images that are not referenced by any tag.",
+      "evidence": [
+        "1 dangling image(s) using 300.0 MiB"
+      ],
+      "why_it_matters": "Dangling images are typically left behind by rebuilds and pulls. They consume disk space and are not used by new containers.",
+      "remediation": "Remove them with docker image prune after confirming they are not needed.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-host-008",
+      "references": [
+        "https://docs.docker.com/engine/manage-resources/pruning/"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "6dd0c5b9dc512799",
+      "rule_id": "SST-HOST-001",
+      "rule_version": "1.0",
+      "title": "Docker daemon reachable",
+      "category": "operations",
+      "severity": "info",
+      "confidence": "high",
+      "target_type": "host",
+      "target_name": "docker-01",
+      "description": "The Docker daemon is reachable and its version information was collected.",
+      "evidence": [
+        "endpoint: unix:///var/run/docker.sock",
+        "Docker Engine 27.3.1 (API 1.47, linux/amd64)",
+        "host OS: Ubuntu 24.04.1 LTS"
+      ],
+      "why_it_matters": "Knowing the exact Docker Engine and API version helps to correlate other findings with release notes and security advisories for that version.",
+      "remediation": "No action required. Keep Docker Engine updated to a supported release.",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-host-001",
+      "references": [
+        "https://docs.docker.com/engine/release-notes/"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    },
+    {
+      "id": "7442e9c536ac30dc",
+      "rule_id": "SST-HOST-007",
+      "rule_version": "1.0",
+      "title": "Stopped containers present",
+      "category": "maintainability",
+      "severity": "info",
+      "confidence": "high",
+      "target_type": "host",
+      "target_name": "docker-01",
+      "description": "The host has stopped containers.",
+      "evidence": [
+        "1 stopped container(s): old-backup"
+      ],
+      "why_it_matters": "Stopped containers keep their writable layer and configuration on disk and can make it harder to see which workloads are actually in use.",
+      "remediation": "Review the stopped containers and remove those that are no longer needed (docker container prune removes all stopped containers; review the list first).",
+      "documentation": "https://github.com/6-SlX-6/stacksentry/blob/main/docs/rules.md#sst-host-007",
+      "references": [
+        "https://docs.docker.com/engine/manage-resources/pruning/"
+      ],
+      "timestamp": "2026-10-01T12:00:00Z",
+      "scanner_version": "0.1.0"
+    }
+  ],
+  "suppressed_findings": [],
+  "skipped_rules": [],
+  "limitations": [
+    "No dockerd process is visible in /proc (for example rootless Docker in another namespace, Docker Desktop, or restricted /proc); its command line was not checked."
+  ],
+  "warnings": []
+}
