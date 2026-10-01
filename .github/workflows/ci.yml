@@ -119,6 +119,25 @@ jobs:
           path: dist/
           retention-days: 7
 
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build image
+        run: docker build --build-arg VERSION=0.1.0 --build-arg "COMMIT=${GITHUB_SHA::12}" -t stacksentry:ci .
+      - name: Run image against an example stack
+        run: |
+          docker run --rm stacksentry:ci version
+          docker run --rm -v "$PWD/examples:/work:ro" stacksentry:ci \
+            scan compose /work/reasonably-secure-compose.yaml --fail-on medium
+          set +e
+          docker run --rm -v "$PWD/examples:/work:ro" stacksentry:ci \
+            scan compose /work/insecure-compose.yaml --fail-on high --quiet
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then echo "expected exit code 1, got $code"; exit 1; fi
+
   examples:
     name: Example commands
     runs-on: ubuntu-latest
