@@ -111,6 +111,13 @@ commit the updated files.
 - Explain *why* in the body when the change is not obvious.
 - Reference issues with `Fixes #123` where applicable.
 
+## Releasing
+
+Publish a release in the GitHub UI (Releases → Draft a new release) with a new
+tag such as `v0.2.0` on `main`, or push the tag with git. Either way the
+Release workflow runs the tests, builds the binaries for all platforms,
+generates `checksums.txt` and attaches them to the release.
+
 ## Reporting security issues
 
 Do not open public issues for vulnerabilities; follow [SECURITY.md](SECURITY.md).
