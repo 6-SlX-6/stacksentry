@@ -40,7 +40,7 @@ representing the project in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing or otherwise unacceptable behavior may be
-reported to the maintainers at **conduct@example.com** (placeholder address).
+reported to the maintainers at **BCA93@gmx.de**.
 All complaints will be reviewed and investigated promptly and fairly, and the
 privacy of the reporter will be respected.
 
